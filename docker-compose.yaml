@@ -78,9 +78,9 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
-    expose:
-      - 29092
-      - 9092
+    ports:
+      - "29092:29092"
+      - "9092:9092"
     networks:
       - kafka-network
   
@@ -102,7 +102,8 @@ services:
     <<: *default-env
     build:
       context: .
-      dockerfile: ci-cd/faststream/faststream.dockerfile
+      dockerfile: ci-cd/backend/webapp.dockerfile
+      target: faststream
     volumes:
       - ./src/faststream/:/app/faststream/
     depends_on:

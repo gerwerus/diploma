@@ -25,5 +25,7 @@ ENTRYPOINT ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 FROM src AS worker
 ENTRYPOINT ["celery", "-A", "config", "worker", "--loglevel=info"]
 
-FROM src AS faststream
-ENTRYPOINT ["faststream", "run", "--reload", "your_project.kafka.consumer:app"]
+FROM depends AS faststream
+COPY ./src/faststream ./faststream
+WORKDIR /app/faststream
+ENTRYPOINT ["faststream", "run", "--reload", "main:app"]
