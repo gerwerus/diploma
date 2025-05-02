@@ -1,0 +1,121 @@
+x-env:
+  &default-env
+  env_file: env/.env
+
+  
+services:
+  pg:
+    <<: *default-env
+    image: postgres:16.6-bookworm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    restart: always
+    expose:
+      - 5432
+    networks:
+      - db-access
+
+  webapp:
+    <<: *default-env
+    build:
+      context: .
+      dockerfile: ci-cd/backend/webapp.dockerfile
+      target: webapp
+    volumes:
+      - ./src/webapp/:/app/webapp/
+    ports:
+      - 8000:8000
+    depends_on:
+      - pg
+    networks:
+      - db-access
+      - deffer-access
+
+  redis:
+    image: redis:alpine
+    expose:
+      - 6379
+    restart: always
+    networks:
+      - deffer-access
+    
+  worker:
+    <<: *default-env
+    build:
+      context: .
+      dockerfile: ci-cd/backend/webapp.dockerfile
+      target: worker
+    volumes:
+      - ./src/webapp/:/app/webapp/
+    expose:
+      - 5554
+    depends_on:
+      - pg
+      - redis
+    networks:
+      - db-access
+      - deffer-access
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    expose:
+      - 2181
+    networks:
+      - kafka-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+    networks:
+      - kafka-network
+  
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    environment:
+      KAFKA_BROKER_CONNECT: "kafka:9092"
+      JVM_OPTS: "-Xms32M -Xmx64M"
+      SERVER_SERVLET_CONTEXT_PATH: "/"
+      SERVER_PORT: 9000
+    ports:
+      - "9000:9000"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-network
+
+  kafka-consumer:
+    <<: *default-env
+    build:
+      context: .
+      dockerfile: ci-cd/faststream/faststream.dockerfile
+    volumes:
+      - ./src/faststream/:/app/faststream/
+    depends_on:
+      - kafka
+    networks:
+      - deffer-access
+      - kafka-network
+      
+
+volumes:
+  postgres_data:
+
+networks:
+  db-access:
+  deffer-access:
+  kafka-network:
