@@ -7,5 +7,5 @@ broker = KafkaBroker(kafka_settings.dsn)
 app = FastStream(broker)
 
 @broker.subscriber(kafka_settings.account_topic)
-async def handle_msg(data: dict) -> str:
+async def handle_msg(data: dict) -> None:
     account_balance_update.delay(data)

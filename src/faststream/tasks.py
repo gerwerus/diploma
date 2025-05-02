@@ -1,6 +1,6 @@
 from celery import shared_task
 
-from .celery import ACCOUNT_BALANCE_UPDATE
+from celery_app import ACCOUNT_BALANCE_UPDATE
 
 
 @shared_task(name=ACCOUNT_BALANCE_UPDATE)
